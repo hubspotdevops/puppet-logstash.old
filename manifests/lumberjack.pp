@@ -1,14 +1,17 @@
 define logstash::lumberjack (
   $file,
-  $host          = undef,
-  $port          = undef,
-  $ssl_ca_path   = '/etc/lumberjack/lumberjack.crt',
-  $ssl_ca_source = undef,
-  $window_size   = undef,
-  $fields        = undef
+  $host            = undef,
+  $package_version = 'installed',
+  $port            = undef,
+  $ssl_ca_path     = '/etc/lumberjack/lumberjack.crt',
+  $ssl_ca_source   = undef,
+  $window_size     = undef,
+  $fields          = undef
 ) {
   if !defined(Class['::logstash::lumberjack::package']) {
-    class { '::logstash::lumberjack::package': }
+    class { '::logstash::lumberjack::package': 
+      package_version => $package_version,
+    }
   }
 
   if !defined(Class['::logstash::lumberjack::config']) {
