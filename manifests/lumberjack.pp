@@ -1,7 +1,7 @@
 define logstash::lumberjack (
   $file,
   $host            = undef,
-  $package_version = '0.0.30-1',
+  $package_version = 'installed',
   $port            = undef,
   $ssl_ca_path     = '/etc/lumberjack/lumberjack.crt',
   $ssl_ca_source   = undef,
