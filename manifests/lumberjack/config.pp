@@ -57,7 +57,7 @@ class logstash::lumberjack::config (
   }
 
   # assemble config hash per https://github.com/jordansissel/lumberjack#configuring.
-  $config = {
+  $conf = {
     network => {
       servers           => $logstash_servers,
       'ssl certificate' => $ssl_cert_path,
@@ -73,7 +73,7 @@ class logstash::lumberjack::config (
     owner   => 'root',
     group   => 'root',
     mode    => '0755',
-    content => sorted_json($config),
+    content => sorted_json($conf),
     notify => Service['lumberjack'],
   }
 
