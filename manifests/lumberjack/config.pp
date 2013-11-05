@@ -42,7 +42,7 @@ class logstash::lumberjack::config (
       mode    => '0644',
       source  => $ssl_ca_source,
       require => File['/etc/lumberjack'],
-      before  => Service['lumberjack'],
+      #before  => Service['lumberjack'],
     }
   }
 
@@ -56,16 +56,34 @@ class logstash::lumberjack::config (
     fail('Missing or invalid servers parameter for Lumberjack. Expected an array of "host:port" server definitions.')
   }
 
-  # assemble config hash per https://github.com/jordansissel/lumberjack#configuring.
-  $conf = {
-    network => {
-      servers           => $logstash_servers,
+  $base_network_config = {
+    'servers' => $servers,
+    'ssl ca'  => $ssl_ca_path,
+    'timeout' => $timeout,
+  }
+
+  if $ssl_cert_path {
+    $network_config_with_cert = merge($base_network_config, {
       'ssl certificate' => $ssl_cert_path,
-      'ssl key'         => $ssl_key_path,
-      'ssl ca'          => $ssl_ca_path,
-      timeout           => $timeout,
-    },
-    files => $files,
+    })
+  }
+  else {
+    $network_config_with_cert = $base_network_config
+  }
+
+  if $ssl_key_path {
+    $network_config = merge($network_config_with_cert, {
+      'ssl key' => $ssl_key_path,
+    })
+  }
+  else {
+    $network_config = $network_config_with_cert
+  }
+
+  # see config hash format at https://github.com/jordansissel/lumberjack#configuring.
+  $config = {
+    network => $network_config,
+    files   => $files,
   }
 
   file { '/etc/lumberjack/lumberjack.conf':
@@ -73,8 +91,8 @@ class logstash::lumberjack::config (
     owner   => 'root',
     group   => 'root',
     mode    => '0755',
-    content => sorted_json($conf),
-    notify => Service['lumberjack'],
+    content => sorted_json($config),
+    #notify  => Service['lumberjack'],
   }
 
   File['/etc/lumberjack'] -> File['/etc/lumberjack/lumberjack.conf']
