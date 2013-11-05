@@ -1,5 +1,15 @@
-class logstash::lumberjack::config ($ssl_ca_path = undef, $ssl_ca_source = undef,) {
-  include concat::setup
+class logstash::lumberjack::config (
+  $servers,
+  $timeout,
+  $files,
+  $ssl_cert_path,
+  $ssl_cert_source,
+  $ssl_key_path,
+  $ssl_key_source,
+  $ssl_ca_path,
+  $ssl_ca_source,
+) {
+  # TODO(ekay): include json pretty printer if needed
 
   file { '/etc/init.d/lumberjack':
     ensure => present,
@@ -9,12 +19,13 @@ class logstash::lumberjack::config ($ssl_ca_path = undef, $ssl_ca_source = undef
     source => 'puppet:///modules/logstash/lumberjack.init'
   }
 
-  service { 'lumberjack':
-    ensure    => running,
-    hasstatus => true,
-  }
+  # TODO(ekay): uncomment this
+  #service { 'lumberjack':
+  #  ensure    => running,
+  #  hasstatus => true,
+  #}
 
-  File['/etc/init.d/lumberjack'] -> Service['lumberjack']
+  #File['/etc/init.d/lumberjack'] -> Service['lumberjack']
 
   file { '/etc/lumberjack':
     ensure => directory,
@@ -35,12 +46,36 @@ class logstash::lumberjack::config ($ssl_ca_path = undef, $ssl_ca_source = undef
     }
   }
 
-  concat { '/etc/lumberjack/lumberjack.conf':
-    owner  => 'root',
-    group  => 'root',
-    mode   => '0644',
+  # TODO(ekay): create ssl key and cert if specified.
+
+  if !is_array($files) or size($files) < 1 {
+    fail('Missing or invalid files parameter for Lumberjack. Expected an array of hashes. See https://github.com/jordansissel/lumberjack#configuring.')
+  }
+
+  if !is_array($logstash_servers) or size($logstash_servers) < 1 {
+    fail('Missing or invalid servers parameter for Lumberjack. Expected an array of "host:port" server definitions.')
+  }
+
+  # assemble config hash per https://github.com/jordansissel/lumberjack#configuring.
+  $config = {
+    network => {
+      servers           => $logstash_servers,
+      'ssl certificate' => $ssl_cert_path,
+      'ssl key'         => $ssl_key_path,
+      'ssl ca'          => $ssl_ca_path,
+      timeout           => $timeout,
+    },
+    files => $files,
+  }
+
+  file { '/etc/lumberjack/lumberjack.conf':
+    ensure  => present,
+    owner   => 'root',
+    group   => 'root',
+    mode    => '0755',
+    content => sorted_json($config),
     notify => Service['lumberjack'],
   }
 
-  File['/etc/lumberjack'] -> Concat['/etc/lumberjack/lumberjack.conf']
+  File['/etc/lumberjack'] -> File['/etc/lumberjack/lumberjack.conf']
 }
