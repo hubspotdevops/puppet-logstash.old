@@ -52,7 +52,7 @@ class logstash::lumberjack::config (
     fail('Missing or invalid files parameter for Lumberjack. Expected an array of hashes. See https://github.com/jordansissel/lumberjack#configuring.')
   }
 
-  if !is_array($logstash_servers) or size($logstash_servers) < 1 {
+  if !is_array($servers) or size($servers) < 1 {
     fail('Missing or invalid servers parameter for Lumberjack. Expected an array of "host:port" server definitions.')
   }
 
