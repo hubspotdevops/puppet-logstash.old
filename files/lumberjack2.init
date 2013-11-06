@@ -1,0 +1,79 @@
+#!/bin/bash
+#
+#       /etc/rc.d/init.d/lumberjack
+#
+#       I'm a lumberjack and I'm ok!
+#       I sleep when idle, then I ship logs all day!
+#       I parse your logs, I eat the JVM agent for lunch!
+#
+  
+# Source function library.
+. /etc/init.d/functions
+
+
+[ -f /etc/sysconfig/$(basename ${0}) ] && . /etc/sysconfig/$(basename ${0})
+
+prog=${PROG-lumberjack}
+lumberjack=${LUMBERJACK-/opt/${prog}/bin/${prog}.sh}
+config=${CONFIG-/etc/${prog}/${prog}.conf}
+piddir=${PIDDIR-/var/run/${prog}}
+logdir=${LOGDIR-/var/log}
+
+[ ! -d ${piddir} ] && mkdir -p ${piddir}
+
+start() {
+        [ ! -f ${config} ] && (echo -n "No config found: ${config}" && echo_failure || echo) && exit 1
+        echo "Starting ${prog}: "
+        PIDFILE=$(mktemp --tmpdir=${piddir} XXX.pid)
+        ${lumberjack} -config ${config} 1>> ${logdir}/${prog}.log 2>>${logdir}/${prog}.err &
+        echo $! > ${PIDFILE}
+        if kill -0 $(cat ${PIDFILE}) &>/dev/null; then
+          echo -n "Started PID $(cat ${PIDFILE}): "
+          echo_success && echo
+        else
+          echo_failure || echo
+        fi
+        return $?
+}
+
+stop() {
+        if [ $(ls -1 ${piddir} |wc -l) -gt 0 ]; then
+          echo "Shutting down ${prog}: "
+          for PIDFILE in $(find ${piddir} -type f -name "*.pid"); do
+            echo -n "Stopping PID $(cat ${PIDFILE}): "
+            killproc -p ${PIDFILE} ${prog}
+            echo
+          done
+          rm -f ${piddir}/*
+        else
+          echo "not running"
+        fi
+        return $?
+}
+
+case "$1" in
+    start)
+        start
+        ;;
+    stop)
+        stop
+        ;;
+    status)
+        RETVAL=0
+        for PIDFILE in $(find ${piddir} -type f -name "*.pid"); do
+            status -p ${PIDFILE} ${prog}
+            [ $? -eq 0 ] || RETVAL=4
+        done
+        [ -z "${PIDFILE}" ] && echo "lumberjack is not running" && RETVAL=3
+        exit ${RETVAL}
+        ;;
+    restart)
+        stop
+        start
+        ;;
+    *)
+        echo "Usage: ${prog} {start|stop|status|restart}"
+        exit 1
+        ;;
+esac
+exit $?
