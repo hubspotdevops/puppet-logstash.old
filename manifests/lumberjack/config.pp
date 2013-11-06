@@ -9,7 +9,6 @@ class logstash::lumberjack::config (
   $ssl_ca_path,
   $ssl_ca_source,
 ) {
-  # TODO(ekay): include json pretty printer if needed
 
   file { '/etc/init.d/lumberjack':
     ensure => present,
@@ -19,19 +18,42 @@ class logstash::lumberjack::config (
     source => 'puppet:///modules/logstash/lumberjack.init'
   }
 
-  # TODO(ekay): uncomment this
-  #service { 'lumberjack':
-  #  ensure    => running,
-  #  hasstatus => true,
-  #}
+  service { 'lumberjack':
+    ensure    => running,
+    hasstatus => true,
+  }
 
-  #File['/etc/init.d/lumberjack'] -> Service['lumberjack']
+  File['/etc/init.d/lumberjack'] -> Service['lumberjack']
 
   file { '/etc/lumberjack':
     ensure => directory,
     owner  => 'root',
     group  => 'root',
     mode   => '0644',
+  }
+
+  if $ssl_cert_source {
+    file { $ssl_cert_path:
+      ensure  => present,
+      owner   => 'root',
+      group   => 'root',
+      mode    => '0644',
+      source  => $ssl_cert_source,
+      require => File['/etc/lumberjack'],
+      before  => Service['lumberjack'],
+    }
+  }
+
+  if $ssl_key_source {
+    file { $ssl_key_path:
+      ensure  => present,
+      owner   => 'root',
+      group   => 'root',
+      mode    => '0644',
+      source  => $ssl_key_source,
+      require => File['/etc/lumberjack'],
+      before  => Service['lumberjack'],
+    }
   }
 
   if $ssl_ca_source {
@@ -42,11 +64,9 @@ class logstash::lumberjack::config (
       mode    => '0644',
       source  => $ssl_ca_source,
       require => File['/etc/lumberjack'],
-      #before  => Service['lumberjack'],
+      before  => Service['lumberjack'],
     }
   }
-
-  # TODO(ekay): create ssl key and cert if specified.
 
   if !is_array($files) or size($files) < 1 {
     fail('Missing or invalid files parameter for Lumberjack. Expected an array of hashes. See https://github.com/jordansissel/lumberjack#configuring.')
@@ -92,7 +112,7 @@ class logstash::lumberjack::config (
     group   => 'root',
     mode    => '0755',
     content => sorted_json($config),
-    #notify  => Service['lumberjack'],
+    notify  => Service['lumberjack'],
   }
 
   File['/etc/lumberjack'] -> File['/etc/lumberjack/lumberjack.conf']
